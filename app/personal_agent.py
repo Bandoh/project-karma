@@ -4,10 +4,11 @@ from app.types.local_types import Config
 from langchain.agents import create_agent
 from langchain.messages import HumanMessage
 from app.tools.retrieval_tool import retrieve_context
+from app.tools.update_memory import update_memory
 
 config = {}
 
-tools = [retrieve_context]
+tools = [retrieve_context, update_memory]
 
 
 def agent_run(query: str):
