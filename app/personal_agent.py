@@ -28,8 +28,12 @@ class Agent:
         resp = self.llm.bind_tools(list(self.tools.values())).invoke(self.conversation)
         if resp.tool_calls:
             resp = self._handle_tools(resp)
-        print(resp.content)
-        return resp.content
+        else:
+            resp = self._handle_final_output()
+        if resp.goal_achieved:
+            return resp.content
+        else:
+            self.run(resp.content)
 
     def _initialize(self):
         with open(".config.json", "r") as inp:
@@ -53,5 +57,7 @@ class Agent:
             self.conversation.append(
                 ToolMessage(content=str(tool_res), tool_call_id=tool_id, name=tool_name)
             )
+        return self._handle_final_output()
 
-        return self.llm.invoke(self.conversation)
+    def _handle_final_output(self):
+        return self.llm.with_structured_output(OutputFormat).invoke(self.conversation)
