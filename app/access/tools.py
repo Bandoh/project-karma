@@ -69,7 +69,7 @@ def terminal_access(command: str):  # Changed from cmd: list to command: str
     # Split the command string into a list for subprocess
     cmd_list = command.split()
 
-    result = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
+    result = subprocess.run(cmd_list, capture_output=True, text=True, shell=True)
     if result.stderr:
         return result.stderr
     else:
