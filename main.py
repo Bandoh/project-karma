@@ -1,10 +1,15 @@
-from app.personal_agent import agent_run
+from app.personal_agent import Agent
 from app.vector_db import get_vector_store
 
 
 def main():
     get_vector_store()
-    agent_run("change me name from Kelvin Quansah to Kelvin Rudolph in your memory")
+    prompt = input("How can i help you\n")
+    while True:
+        agent = Agent()
+        resp = agent.run(prompt)
+        print(resp)
+        prompt = input()
 
 
 if __name__ == "__main__":
