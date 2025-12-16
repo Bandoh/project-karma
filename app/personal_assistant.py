@@ -1,22 +1,24 @@
 from langchain_ollama import ChatOllama
 import json
-from app.types.local_types import Config, OutputFormat, output_format_schema
+from app.utils.local_types import Config, OutputFormat, output_format_schema
 from langchain.agents import create_agent
-from langchain.messages import HumanMessage
+from langchain.messages import HumanMessage, AnyMessage
 from app.access.tools import retrieve_context, update_memory, terminal_access
 from langchain.agents.structured_output import ToolStrategy, ProviderStrategy
 import ast
+from app.utils.memory_management import MemoryManager, KarmaAgentState
 
 
 class Agent:
-    def __init__(self):
+    def __init__(self, memory_manager: MemoryManager):
         self.config = {}
+        self.memory_manager = memory_manager
         self.tools = [
             retrieve_context,
             update_memory,
             terminal_access,
         ]
-        self.conversation = []
+        self.memory_config = {"configurable": {"thread_id": "1"}}
         self.initialized = False
         self.personal_agent = ""
 
@@ -24,22 +26,17 @@ class Agent:
         if not self.initialized:
             self._initialize()
             self.initialized = True
-
-        self.conversation.append({"role": "user", "content": query})
-        resp = self.personal_agent.invoke({"messages": self.conversation})
-        self._list_tools_used(resp)
-        parsed_resp = self._parse_structured_to_json(resp["messages"][-1].content)
-        self.conversation.append(
-            {
-                "role": "ai",
-                "content": str(parsed_resp),
-            }
+        resp = self.personal_agent.invoke(
+            {"messages": HumanMessage(query), "user_name": "Kelvin Gander"},
+            self.memory_config,
         )
+        self._save_chat_history(
+            self.personal_agent.get_state(self.memory_config).values["messages"]
+        )
+        self._list_tools_used(resp)
+        parsed_resp = resp["structured_response"]
         if parsed_resp["goal_achieved"]:
             print("Goal Acheived!")
-        with open("output.json", "w+") as inp:
-            json.dump(self.conversation, inp)
-            inp.close()
         return parsed_resp["content"]
 
     def _initialize(self):
@@ -60,6 +57,8 @@ class Agent:
             tools=self.tools,
             system_prompt=self.config.system_message,
             response_format=ToolStrategy(output_format_schema),
+            checkpointer=self.memory_manager.get_checkpointer(),
+            state_schema=KarmaAgentState,
         )
 
     def _list_tools_used(self, resp):
@@ -72,19 +71,9 @@ class Agent:
                 for tool_call in message.tool_calls:
                     print(f"Tool: {tool_call['name']}, Args: {tool_call['args']}")
 
-    def _parse_structured_to_json(self, text: str):
-        print("This is from parsing function ", text)
-        json_str = text.replace("Returning structured response: ", "").strip()
-
-        # Use ast.literal_eval to safely parse the Python dict string
-        try:
-            dict_obj = ast.literal_eval(json_str)
-            return dict_obj
-        except (ValueError, SyntaxError) as e:
-            print(f"Error parsing with ast.literal_eval: {e}")
-            # Fallback: try direct json.loads in case it's already valid JSON
-            try:
-                return json.loads(json_str)
-            except json.JSONDecodeError as je:
-                print(f"Error parsing with json.loads: {je}")
-                raise
+    def _save_chat_history(self, messages: list[AnyMessage]):
+        m = [{"role": message.type, "content": message.content} for message in messages]
+        with open("output.json", "w+") as inp:
+            json.dump(m, inp)
+            inp.close()
+        pass
