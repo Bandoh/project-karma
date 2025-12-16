@@ -15,4 +15,5 @@ class MemoryManager:
 
 class KarmaAgentState(AgentState):
     user_name: str
+    structured_response: dict
     pass
