@@ -72,7 +72,11 @@ class Agent:
                     print(f"Tool: {tool_call['name']}, Args: {tool_call['args']}")
 
     def _save_chat_history(self, messages: list[AnyMessage]):
-        m = [{"role": message.type, "content": message.content} for message in messages]
+        m = [
+            {"role": message.type, "content": message.content}
+            for message in messages
+            if message.content
+        ]
         with open("output.json", "w+") as inp:
             json.dump(m, inp)
             inp.close()
