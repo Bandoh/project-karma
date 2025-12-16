@@ -1,6 +1,6 @@
 from langchain_ollama import ChatOllama
 import json
-from app.types.local_types import Config, OutputFormat
+from app.utils.local_types import Config, OutputFormat
 from langchain.agents import create_agent
 from langchain.messages import HumanMessage, SystemMessage, ToolMessage
 from app.access.tools import retrieve_context, update_memory, terminal_access

@@ -1,6 +1,6 @@
 from langchain.tools import tool
 import logging
-from app.vector_db import get_vector_store
+from app.utils.vector_db import get_vector_store
 from langchain_core.documents import Document
 import subprocess
 import datetime
