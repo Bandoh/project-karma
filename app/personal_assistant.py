@@ -1,23 +1,19 @@
 from langchain_ollama import ChatOllama
 import json
-from app.utils.local_types import Config, OutputFormat, output_format_schema
+from app.utils.local_types import Config, output_format_schema
 from langchain.agents import create_agent
 from langchain.messages import HumanMessage, AnyMessage
-from app.access.tools import retrieve_context, update_memory, terminal_access
-from langchain.agents.structured_output import ToolStrategy, ProviderStrategy
-import ast
+from app.access.tools import retrieve_context, update_memory, terminal_access, browser
+from langchain.agents.structured_output import ToolStrategy
 from app.utils.memory_management import MemoryManager, KarmaAgentState
+import ast
 
 
 class Agent:
     def __init__(self, memory_manager: MemoryManager):
         self.config = {}
         self.memory_manager = memory_manager
-        self.tools = [
-            retrieve_context,
-            update_memory,
-            terminal_access,
-        ]
+        self.tools = [retrieve_context, update_memory, terminal_access, browser]
         self.memory_config = {"configurable": {"thread_id": "1"}}
         self.initialized = False
         self.personal_agent = ""
@@ -27,17 +23,19 @@ class Agent:
             self._initialize()
             self.initialized = True
         resp = self.personal_agent.invoke(
-            {"messages": HumanMessage(query), "user_name": "Kelvin Gander"},
+            {"messages": [HumanMessage(query)], "user_name": "Kelvin Gander"},
             self.memory_config,
         )
-        self._save_chat_history(
+        last_response = self._save_chat_history(
             self.personal_agent.get_state(self.memory_config).values["messages"]
         )
-        self._list_tools_used(resp)
-        parsed_resp = resp["structured_response"]
-        if parsed_resp["goal_achieved"]:
-            print("Goal Acheived!")
-        return parsed_resp["content"]
+        # print(resp)
+        # self._list_tools_used(resp)
+        # parsed_resp = resp["structured_response"]
+        # if parsed_resp["goal_achieved"]:
+        #     print("Goal Acheived!")
+        # return parsed_resp["content"]
+        return self._parse_structured_response(last_response)["content"]
 
     def _initialize(self):
         with open(".config.json", "r") as inp:
@@ -62,22 +60,52 @@ class Agent:
         )
 
     def _list_tools_used(self, resp):
+        tool_used = False
         for message in resp["messages"]:
             if hasattr(message, "tool_calls") and message.tool_calls:
                 print(f"Tools used: {[tc['name'] for tc in message.tool_calls]}")
-
+                tool_used = True
             # For AIMessage with tool_calls attribute
             if message.type == "ai" and hasattr(message, "tool_calls"):
                 for tool_call in message.tool_calls:
                     print(f"Tool: {tool_call['name']}, Args: {tool_call['args']}")
+                    tool_used = True
+        return tool_used
 
     def _save_chat_history(self, messages: list[AnyMessage]):
+        last_message = ""
         m = [
             {"role": message.type, "content": message.content}
             for message in messages
             if message.content
         ]
+        last_message = m[-1]["content"]
         with open("output.json", "w+") as inp:
             json.dump(m, inp)
             inp.close()
-        pass
+        return last_message
+
+    def _parse_structured_response(self, response_string: str) -> dict:
+        """
+        Parse structured response from a string.
+
+        Args:
+            response_string: String like "Returning structured response: {'content': '...', 'goal_achieved': 'true'}"
+
+        Returns:
+            Dictionary with parsed content
+        """
+        try:
+            # Remove the prefix "Returning structured response: "
+            if "Returning structured response: " in response_string:
+                dict_string = response_string.split(
+                    "Returning structured response: ", 1
+                )[1]
+            else:
+                dict_string = response_string
+
+            # Parse the dictionary string
+            parsed_dict = ast.literal_eval(dict_string)
+            return parsed_dict
+        except:
+            return {"content": dict_string, "goal_acheived": True}
