@@ -13,6 +13,7 @@ from sumy.nlp.tokenizers import Tokenizer
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.utils import get_stop_words
 from bs4 import BeautifulSoup
+import requests
 
 
 @tool(response_format="content_and_artifact")
@@ -197,4 +198,84 @@ def browser(url: str) -> str:
     return summarized.strip()
 
 
+@tool(
+    response_format="content",
+    description="Searches for anime information using the Jikan API (MyAnimeList). Supports four search types: 'top_anime' (get top-ranked anime, query ignored), 'get_anime' (search anime by name), 'search_character' (search characters by name), and 'anime_recommendations' (get recommendations for an anime, query should be anime ID). Returns JSON data as a string containing anime titles, scores, images, and other metadata.",
+)
+def search_anime(query: str, search_type: str) -> str:
+    """
+    Search for anime information using the Jikan API (MyAnimeList unofficial API).
+
+    Args:
+        query (str): The search query. For 'get_anime' and 'search_character',
+                     this should be the name to search for. For 'anime_recommendations',
+                     this should be the anime ID. For 'top_anime', this parameter is ignored.
+        search_type (str): The type of search to perform. Must be one of:
+                          - 'top_anime': Get top-ranked anime (query ignored)
+                          - 'get_anime': Search for anime by name, use this to find any information about a particular anime
+                          - 'search_character': Search for characters by name
+                          - 'anime_recommendations': Get anime recommendations (query = anime ID)
+
+    Returns:
+        str: JSON response from the Jikan API as a string, containing anime/character
+             information including titles, scores, images, synopses, and other metadata.
+
+    Example:
+        >>> search_anime("naruto", "search_character")
+        >>> search_anime("1", "anime_recommendations")
+        >>> search_anime("", "top_anime")
+        >>> search_anime("bleach", "get_anime")
+    """
+    needed_info = [
+        "mal_id",
+        "title",
+        "score",
+        "favorites",
+        "popularity",
+        "synopsis",
+        "rank",
+        "year",
+        "genres",
+        "themes",
+        "episodes",
+    ]
+
+    urls = {
+        "top_anime": "https://api.jikan.moe/v4/top/anime",
+        "get_anime": "https://api.jikan.moe/v4/anime?q={}",
+        "search_character": "https://api.jikan.moe/v4/characters?q={}",
+        "anime_recommendations": "https://api.jikan.moe/v4/anime/{}/recommendations",
+    }
+
+    # Get recommendations (special case)
+    if search_type == "anime_recommendations":
+        # Find anime ID
+        url = urls["get_anime_id"].format(query)
+        anime = requests.get(url).json()["data"][0]
+        anime_id = anime["mal_id"]
+
+        # Get recommendations
+        url = urls["anime_recommendations"].format(anime_id)
+        recs = requests.get(url).json()["data"]
+
+        # Format and sort by votes
+        results = [{"title": r["entry"]["title"], "votes": r["votes"]} for r in recs]
+        results.sort(key=lambda x: x["votes"], reverse=True)
+
+        return str(results[:5])
+
+    # All other search types
+    url = (
+        urls[search_type]
+        if search_type == "top_anime"
+        else urls[search_type].format(query)
+    )
+    resp = requests.get(url).json()["data"]
+    json_resp = []
+    for anime in resp:
+        json_resp.append({key: anime.get(key) for key in needed_info})
+    return str(json_resp)
+
+
 # can you browse this page and tell me what in there https://en.wikipedia.org/wiki/Albert_Bandura
+# give me anime recommendations based on erased

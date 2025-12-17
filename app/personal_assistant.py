@@ -3,7 +3,13 @@ import json
 from app.utils.local_types import Config, output_format_schema
 from langchain.agents import create_agent
 from langchain.messages import HumanMessage, AnyMessage
-from app.access.tools import retrieve_context, update_memory, terminal_access, browser
+from app.access.tools import (
+    retrieve_context,
+    update_memory,
+    terminal_access,
+    browser,
+    search_anime,
+)
 from langchain.agents.structured_output import ToolStrategy
 from app.utils.memory_management import MemoryManager, KarmaAgentState
 import ast
@@ -13,7 +19,13 @@ class Agent:
     def __init__(self, memory_manager: MemoryManager):
         self.config = {}
         self.memory_manager = memory_manager
-        self.tools = [retrieve_context, update_memory, terminal_access, browser]
+        self.tools = [
+            retrieve_context,
+            update_memory,
+            terminal_access,
+            browser,
+            search_anime,
+        ]
         self.memory_config = {"configurable": {"thread_id": "1"}}
         self.initialized = False
         self.personal_agent = ""
@@ -26,15 +38,10 @@ class Agent:
             {"messages": [HumanMessage(query)], "user_name": "Kelvin Gander"},
             self.memory_config,
         )
+        self._list_tools_used(resp)
         last_response = self._save_chat_history(
             self.personal_agent.get_state(self.memory_config).values["messages"]
         )
-        # print(resp)
-        # self._list_tools_used(resp)
-        # parsed_resp = resp["structured_response"]
-        # if parsed_resp["goal_achieved"]:
-        #     print("Goal Acheived!")
-        # return parsed_resp["content"]
         return self._parse_structured_response(last_response)["content"]
 
     def _initialize(self):
@@ -102,6 +109,7 @@ class Agent:
                     "Returning structured response: ", 1
                 )[1]
             else:
+                print("Not using STRUCTURED RESPONSE")
                 dict_string = response_string
 
             # Parse the dictionary string
