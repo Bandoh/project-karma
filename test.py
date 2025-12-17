@@ -76,5 +76,61 @@ def browser(url: str) -> str:
     return summarized.strip()
 
 
-# Test
-print(browser("https://en.wikipedia.org/wiki/Albert_Bandura"))
+def search_engine_anime(query: str, search_type: str):
+    needed_info = [
+        "mal_id",
+        "title",
+        "score",
+        "favorites",
+        "popularity",
+        "synopsis",
+        "rank",
+        "year",
+        "genres",
+        "themes",
+        "episodes",
+    ]
+
+    urls = {
+        "top_anime": "https://api.jikan.moe/v4/top/anime",
+        "get_anime_id": "https://api.jikan.moe/v4/anime?q={}",
+        "search_character": "https://api.jikan.moe/v4/characters?q={}",
+        "anime_recommendations": "https://api.jikan.moe/v4/anime/{}/recommendations",
+    }
+
+    # Get recommendations (special case)
+    if search_type == "anime_recommendations":
+        # Find anime ID
+        url = urls["get_anime_id"].format(query)
+        anime = requests.get(url).json()["data"][0]
+        anime_id = anime["mal_id"]
+
+        # Get recommendations
+        url = urls["anime_recommendations"].format(anime_id)
+        recs = requests.get(url).json()["data"]
+
+        # Format and sort by votes
+        results = [{"title": r["entry"]["title"], "votes": r["votes"]} for r in recs]
+        results.sort(key=lambda x: x["votes"], reverse=True)
+
+        return str(results[:5])
+
+    # All other search types
+    url = (
+        urls[search_type]
+        if search_type == "top_anime"
+        else urls[search_type].format(query)
+    )
+    resp = requests.get(url).json()["data"]
+    json_resp = []
+    for anime in resp:
+        json_resp.append({key: anime.get(key) for key in needed_info})
+    return str(json_resp)
+
+
+def save_to_json(data):
+    with open("output.json", "w+") as inp:
+        json.dump(data, inp)
+
+
+search_engine_anime("erased", "top_anime")
