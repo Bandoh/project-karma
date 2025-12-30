@@ -1,4 +1,5 @@
 from langchain_ollama import ChatOllama
+from langchain_community.chat_models import ChatLlamaCpp
 import json
 from app.utils.local_types import Config, output_format_schema
 from langchain.agents import create_agent
@@ -10,6 +11,7 @@ from app.access.tools import (
     browser,
     search_anime,
 )
+import multiprocessing
 from langchain.agents.structured_output import ToolStrategy
 from app.utils.memory_management import MemoryManager, KarmaAgentState
 import ast
@@ -38,6 +40,7 @@ class Agent:
             {"messages": [HumanMessage(query)], "user_name": "Kelvin Gander"},
             self.memory_config,
         )
+        print(resp)
         self._list_tools_used(resp)
         last_response = self._save_chat_history(
             self.personal_agent.get_state(self.memory_config).values["messages"]
@@ -52,16 +55,25 @@ class Agent:
             "structured_output": True,
             # ...
         }
-        llm = ChatOllama(
-            model=self.config.model_name,
+        print("About to Initialize Model")
+        llm = ChatLlamaCpp(    
+            model_path=self.config.model_name,
             temperature=self.config.temperature,
             profile=custom_profile,
+            n_ctx=10000,
+            n_gpu_layers=10000,
+            n_batch=300,  # Should be between 1 and n_ctx, consider the amount of VRAM in your GPU.
+            max_tokens=512,
+            n_threads=multiprocessing.cpu_count() - 1,
+            repeat_penalty=1.5,
+            top_p=0.5,
+            verbose=True,
         )
         self.personal_agent = create_agent(
             model=llm,
             tools=self.tools,
             system_prompt=self.config.system_message,
-            response_format=ToolStrategy(output_format_schema),
+            # response_format=ToolStrategy(output_format_schema),
             checkpointer=self.memory_manager.get_checkpointer(),
             state_schema=KarmaAgentState,
         )

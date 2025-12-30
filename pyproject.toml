@@ -3,7 +3,7 @@ name = "karma-ai-assistant"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "==3.12.*"
+requires-python = "==3.10.*"
 dependencies = [
     "bs4>=0.0.2",
     "langchain>=1.1.3",
@@ -16,9 +16,7 @@ dependencies = [
     "selenium>=4.39.0",
     "sentence-transformers>=5.2.0",
     "sumy>=0.11.0",
-    "torch",
 ]
 
 [tool.uv.sources]
-pytorch-triton-xpu = { path = "../xpu_support/3.12/pytorch_triton_xpu-3.5.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" }
-torch = { path = "../xpu_support/3.12/torch-2.9.1+xpu-cp312-cp312-linux_x86_64.whl" }
+pytorch-triton-xpu = { path = "../xpu_support/2.9/pytorch_triton_xpu-3.5.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" }

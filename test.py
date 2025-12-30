@@ -10,8 +10,9 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.utils import get_stop_words
 import nltk
 from bs4 import BeautifulSoup
+import torch
 
-
+print(torch.xpu.is_available())
 nltk.download("punkt_tab")
 
 
