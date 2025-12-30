@@ -82,27 +82,78 @@ You are my helpful assistant. always assume is your creator talking to you
 You have access to the following tools.
 
 Tool name: terminal_access
-Description: Execute terminal/shell commands on the operating system.
-Use this tool for ANY system command, shell operation, or file system interaction.
+Description:
+Executes terminal or shell commands on the operating system.
+This tool is selected based on USER INTENT, not wording.
+INTENT:
+Use this tool when the user’s intent is to obtain information or perform actions
+that REQUIRE access to the operating system, file system, or runtime environment.
+This includes intents such as:
+- Inspecting the file system (what files exist, file contents, permissions)
+- Executing commands or scripts
+- Inspecting system state (OS, CPU, memory, disk, processes)
+- Debugging issues that require real command output
+- Running or testing programs
+NON-INTENT:
+Do NOT use this tool when the user’s intent is:
+- Learning how to use a command (explanation only)
+- Asking what *would* happen if a command is run
+- Asking theoretical or conceptual questions
+- Requesting reasoning, advice, or summaries
+CRITICAL RULE:
+- Any request involving files, folders, directories, paths, listing, reading, writing, or system state
+  MUST use the terminal_access tool.
+- retrieve_context MUST NEVER be used for filesystem or OS-related requests.
+- If terminal_access is not used when required, the response is INVALID.
 Arguments:
-- command (string): The command as a string (e.g., "ls -la" or "cat file.txt"). eg. {'tool': 'terminal_access', 'args': {'command': 'ls -l'}}
-
+- command (string): The exact shell command required to fulfill the intent
+Examples:
+    >>> {"tool":"terminal_access","args":{"command":"ls -la"}}
+    >>> {"tool":"terminal_access","args":{"command":"cat config.yaml"}}
+    >>> {"tool":"terminal_access","args":{"command":"uname -a"}}
+    
 Tool name: retrieve_context
-Description: Search through stored documents and knowledge base for information.
+Description:
+Retrieves information ONLY from previously stored documents, memory, or knowledge base.
+This tool MUST be used when the answer depends on stored or remembered information
+and should NOT be used for general world knowledge.
+Use this tool when the user:
+- Asks about previously uploaded documents or files
+- References earlier conversations, memories, or saved facts
+- Asks "do you remember", "what did I say", "what did we discuss"
+- Asks about a person, project, or event that exists ONLY in stored context
+- Asks about the assistant’s creator, system history, or internal notes (if stored)
+DO NOT use this tool when:
+- The answer can be given from general knowledge
+- The user asks for opinions, reasoning, or explanations
+- The question is fictional or hypothetical
 Arguments:
-- query (string): Natural language search query to find relevant documents
+- query (string): A natural-language search query describing what information to retrieve
+Examples:
+    >>> {'tool': 'retrieve_context', 'args': {'query': 'Football'}}
 
 Tool name: search_anime
-Description: Searches for anime information using the Jikan API (MyAnimeList). Supports four search types: 'top_anime' (get top-ranked anime, query ignored), 'get_anime' (search anime by name), 'search_character' (search characters by name), and 'anime_recommendations' (get recommendations for an anime, query should be anime ID). Returns JSON data as a string containing anime titles, scores, images, and other metadata.
+Description: Searches for anime information using the Jikan API (MyAnimeList).
+- If the user asks for recommendations, similar anime, what to watch next, or says "if I liked X", you MUST use:
+  search_type = "anime_recommendations"
+- If the user asks for details, information, synopsis, or facts about an anime, use:
+  search_type = "get_anime"
+- Do NOT use get_anime when the user intent is recommendations.. 
 Arguments:
     - query (str): The search query. For 'get_anime' and 'search_character',
                      this should be the name to search for. For 'anime_recommendations',
-                     this should be the anime ID. For 'top_anime', this parameter is ignored.
+                     this should be the anime name. For 'top_anime', this parameter is ignored.
+                     
     - search_type (str): The type of search to perform. Must be one of:
-                          - 'top_anime': Get top-ranked anime (query ignored)
-                          - 'get_anime': Search for anime by name, use this to find any information about a particular anime
-                          - 'search_character': Search for characters by name
-                          - 'anime_recommendations': Get anime recommendations (query = anime ID)
+                    - 'anime_recommendations': Get anime recommendations (query = anime name)
+                    - 'top_anime': Get top-ranked anime (query ignored)
+                    - 'get_anime': Search for anime by name, use this to find any information about a particular anime
+                    - 'search_character': Search for characters by name
+Examples:
+    >>> {'tool': 'search_anime', 'args': {'query': 'Erased', 'search_type': 'anime_recommendations'}}
+    >>> {'tool': 'search_anime', 'args': {'query': 'Attack on Titan', 'search_type': 'get_anime'}}
+    >>> {'tool': 'search_anime', 'args': {'query': '', 'search_type': 'top_anime'}}
+    >>> {'tool': 'search_anime', 'args': {'query': 'Levi Ackerman', 'search_type': 'search_character'}}
 """
 
 
@@ -186,7 +237,7 @@ while True:
     print("Karma:",resp)
 
 
-
+# if i liked erased what anime will i lke
 
 with open("l.json","w+")as out:
     json.dump(agent.conversation, out)

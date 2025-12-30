@@ -1,4 +1,4 @@
-from app.personal_agent import Agent
+from app.agentic_mode.personal_model import Agent
 from app.utils.vector_db import get_vector_store
 # from app.personal_assistant import Agent
 from app.utils.memory_management import MemoryManager

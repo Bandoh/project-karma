@@ -207,10 +207,11 @@ def search_anime(query: str, search_type: str) -> str:
                      this should be the name to search for. For 'anime_recommendations',
                      this should be the anime ID. For 'top_anime', this parameter is ignored.
         search_type (str): The type of search to perform. Must be one of:
+                          - 'anime_recommendations': Get anime recommendations (query = anime name)
                           - 'top_anime': Get top-ranked anime (query ignored)
                           - 'get_anime': Search for anime by name, use this to find any information about a particular anime
                           - 'search_character': Search for characters by name
-                          - 'anime_recommendations': Get anime recommendations (query = anime ID)
+
 
     Returns:
         str: JSON response from the Jikan API as a string, containing anime/character
@@ -218,7 +219,7 @@ def search_anime(query: str, search_type: str) -> str:
 
     Example:
         >>> search_anime("naruto", "search_character")
-        >>> search_anime("1", "anime_recommendations")
+        >>> search_anime("naruto", "anime_recommendations")
         >>> search_anime("", "top_anime")
         >>> search_anime("bleach", "get_anime")
     """
@@ -270,7 +271,11 @@ def search_anime(query: str, search_type: str) -> str:
     json_resp = []
     for anime in resp:
         json_resp.append({key: anime.get(key) for key in needed_info})
-    return str(json_resp)
+    if search_type in ("get_anime", "search_character"):
+        return str(json_resp[0])
+    else:
+        return str(json_resp[:5])
+
 
 
 # can you browse this page and tell me what in there https://en.wikipedia.org/wiki/Albert_Bandura
