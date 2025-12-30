@@ -85,13 +85,24 @@ Tool name: terminal_access
 Description: Execute terminal/shell commands on the operating system.
 Use this tool for ANY system command, shell operation, or file system interaction.
 Arguments:
-- command (string): The command as a string (e.g., "ls -la" or "cat file.txt")
+- command (string): The command as a string (e.g., "ls -la" or "cat file.txt"). eg. {'tool': 'terminal_access', 'args': {'command': 'ls -l'}}
 
 Tool name: retrieve_context
 Description: Search through stored documents and knowledge base for information.
 Arguments:
 - query (string): Natural language search query to find relevant documents
 
+Tool name: search_anime
+Description: Searches for anime information using the Jikan API (MyAnimeList). Supports four search types: 'top_anime' (get top-ranked anime, query ignored), 'get_anime' (search anime by name), 'search_character' (search characters by name), and 'anime_recommendations' (get recommendations for an anime, query should be anime ID). Returns JSON data as a string containing anime titles, scores, images, and other metadata.
+Arguments:
+    - query (str): The search query. For 'get_anime' and 'search_character',
+                     this should be the name to search for. For 'anime_recommendations',
+                     this should be the anime ID. For 'top_anime', this parameter is ignored.
+    - search_type (str): The type of search to perform. Must be one of:
+                          - 'top_anime': Get top-ranked anime (query ignored)
+                          - 'get_anime': Search for anime by name, use this to find any information about a particular anime
+                          - 'search_character': Search for characters by name
+                          - 'anime_recommendations': Get anime recommendations (query = anime ID)
 """
 
 
@@ -104,13 +115,13 @@ class Agent():
         self.model = ChatLlamaCpp(     
             model_path=self.config.model_name,
             temperature=self.config.temperature,
-            n_ctx=10000,
+            n_ctx=20000,
             n_gpu_layers=-1,
             n_batch=300,  # Should be between 1 and n_ctx, consider the amount of VRAM in your GPU.
             max_tokens=10000,
             n_threads=multiprocessing.cpu_count() - 1,
-            repeat_penalty=1.5,
-            top_p=0.5,
+            repeat_penalty=1.1,
+            top_p=0.9,
             verbose=False,
         )
         pass
@@ -125,7 +136,7 @@ class Agent():
         self.query = query
         self.conversation.append({"role":"user","content":self.query})
         resp = self.model.with_structured_output(json_tool_schema).invoke(self.conversation)
-        # print("This is from first: ",resp)
+        print("This is from first: ",resp)
         json_parsed = resp
         final_resp = self.__check_resp(json_parsed=json_parsed)
         return final_resp
@@ -138,7 +149,7 @@ class Agent():
             json_parsed = new_resp
         if "goal_achieved" in json_parsed:
             if "content" in json_parsed:
-                return str(json_parsed['content']).strip()
+                return json_parsed['content']
 
     
     def __run_tool(self,json_resp):
@@ -151,7 +162,7 @@ class Agent():
             tool_result = update_memory(**json_resp['args'])
         elif json_resp['tool'] == "search_anime":
             tool_result = search_anime(**json_resp['args'])
-        print("THis is result from tools: ", tool_result)
+        # print("THis is result from tools: ", tool_result)
         self.conversation.append({
             "role": "tool",
             "content": str(tool_result),
@@ -172,7 +183,7 @@ agent = Agent()
 while True:
     q = input("user: ")
     resp = agent.run(query=q)
-    print("AI: :",resp)
+    print("Karma:",resp)
 
 
 
