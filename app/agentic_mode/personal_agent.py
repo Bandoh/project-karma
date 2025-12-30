@@ -5,6 +5,8 @@ from langchain.agents import create_agent
 from langchain.messages import HumanMessage, SystemMessage, ToolMessage
 from app.access.tools import retrieve_context, update_memory, terminal_access
 from langchain.agents.structured_output import ToolStrategy
+import multiprocessing
+from langchain_community.chat_models import ChatLlamaCpp
 
 
 class Agent:
@@ -12,8 +14,8 @@ class Agent:
         self.config = {}
         self.tools = {
             "retrieve_context": retrieve_context,
-            "update_memory": update_memory,
-            "terminal_access": terminal_access,
+            # "update_memory": update_memory,
+            # "terminal_access": terminal_access,
         }
         self.conversation = []
         self.llm = None
@@ -24,25 +26,39 @@ class Agent:
             self.llm = self._initialize()
             self.initialized = True
 
-        self.conversation.append(HumanMessage(query))
+        self.conversation.append(("human",query))
         resp = self.llm.bind_tools(list(self.tools.values())).invoke(self.conversation)
-        if resp.tool_calls:
-            resp = self._handle_tools(resp)
-        else:
-            resp = self._handle_final_output()
-        if resp.goal_achieved:
-            return resp.content
-        else:
-            self.run(resp.content)
+        for tool_call in resp.tool_calls:
+            print("In Tool Calling!")
+            # View tool calls made by the model
+            print(f"Tool: {tool_call['name']}")
+            print(f"Args: {tool_call['args']}")
+        # if resp.tool_calls:
+        #     resp = self._handle_tools(resp)
+        # else:
+        #     resp = self._handle_final_output()
+        return resp.content
+
 
     def _initialize(self):
         with open(".config.json", "r") as inp:
             data = json.load(inp)
             self.config = Config(**data)
-        llm = ChatOllama(
-            model=self.config.model_name, temperature=self.config.temperature
+        llm = ChatLlamaCpp(     
+            model_path=self.config.model_name,
+            temperature=self.config.temperature,
+            n_ctx=10000,
+            n_gpu_layers=-1,
+            n_batch=300,  # Should be between 1 and n_ctx, consider the amount of VRAM in your GPU.
+            max_tokens=512,
+            n_threads=multiprocessing.cpu_count() - 1,
+            repeat_penalty=1.5,
+            top_p=0.5,
+            verbose=False,
         )
-        self.conversation.append(SystemMessage(self.config.system_message))
+        self.conversation.append((
+            "system",self.config.system_message
+        ))
         return llm
 
     def _handle_tools(self, response):

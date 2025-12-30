@@ -10,8 +10,9 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.utils import get_stop_words
 import nltk
 from bs4 import BeautifulSoup
+import torch
 
-
+print(torch.xpu.is_available())
 nltk.download("punkt_tab")
 
 
@@ -93,7 +94,7 @@ def search_engine_anime(query: str, search_type: str):
 
     urls = {
         "top_anime": "https://api.jikan.moe/v4/top/anime",
-        "get_anime_id": "https://api.jikan.moe/v4/anime?q={}",
+        "get_anime": "https://api.jikan.moe/v4/anime?q={}",
         "search_character": "https://api.jikan.moe/v4/characters?q={}",
         "anime_recommendations": "https://api.jikan.moe/v4/anime/{}/recommendations",
     }
@@ -101,7 +102,7 @@ def search_engine_anime(query: str, search_type: str):
     # Get recommendations (special case)
     if search_type == "anime_recommendations":
         # Find anime ID
-        url = urls["get_anime_id"].format(query)
+        url = urls["get_anime"].format(query)
         anime = requests.get(url).json()["data"][0]
         anime_id = anime["mal_id"]
 
@@ -112,7 +113,7 @@ def search_engine_anime(query: str, search_type: str):
         # Format and sort by votes
         results = [{"title": r["entry"]["title"], "votes": r["votes"]} for r in recs]
         results.sort(key=lambda x: x["votes"], reverse=True)
-
+        save_to_json(results[:5])
         return str(results[:5])
 
     # All other search types
@@ -125,7 +126,13 @@ def search_engine_anime(query: str, search_type: str):
     json_resp = []
     for anime in resp:
         json_resp.append({key: anime.get(key) for key in needed_info})
-    return str(json_resp)
+    save_to_json(json_resp)
+    if search_type in ("get_anime", "search_character"):
+        save_to_json(json_resp[0])
+        return str(json_resp[0])
+    else:
+        save_to_json(json_resp[:5])
+        return str(json_resp[:5])
 
 
 def save_to_json(data):

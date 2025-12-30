@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 import requests
 
 
-@tool(response_format="content_and_artifact")
+# @tool(response_format="content_and_artifact")
 def retrieve_context(query: str):
     """Search through stored documents and knowledge base for information.
 
@@ -38,18 +38,17 @@ def retrieve_context(query: str):
     Returns:
         Relevant document excerpts with their sources
     """
-    logging.info("We are in retrieval tool.....")
-    print("In tool")
     vector_store = get_vector_store()
-    retrieved_docs = vector_store.similarity_search(query, k=2)
-    serialized = "\n\n".join(
-        (f"Source: {doc.metadata}\nContent: {doc.page_content}")
-        for doc in retrieved_docs
-    )
-    return serialized, retrieved_docs
+    all_docs = ""
+    retrieved_docs_with_scores = vector_store.similarity_search_with_score(query, k=5)
+    for doc, score in retrieved_docs_with_scores:
+        # print(score) 
+        if score > 0.25: 
+            all_docs+= " {}".format(doc.page_content)
+    return all_docs
 
 
-@tool(response_format="content")
+
 def terminal_access(command: str):  # Changed from cmd: list to command: str
     """Execute terminal/shell commands on the operating system.
 
@@ -85,7 +84,7 @@ def terminal_access(command: str):  # Changed from cmd: list to command: str
         return result.stdout
 
 
-@tool(response_format="content")
+
 def update_memory(information: str) -> str:
     """Permanently store important information in the knowledge base.
 
@@ -198,10 +197,7 @@ def browser(url: str) -> str:
     return summarized.strip()
 
 
-@tool(
-    response_format="content",
-    description="Searches for anime information using the Jikan API (MyAnimeList). Supports four search types: 'top_anime' (get top-ranked anime, query ignored), 'get_anime' (search anime by name), 'search_character' (search characters by name), and 'anime_recommendations' (get recommendations for an anime, query should be anime ID). Returns JSON data as a string containing anime titles, scores, images, and other metadata.",
-)
+
 def search_anime(query: str, search_type: str) -> str:
     """
     Search for anime information using the Jikan API (MyAnimeList unofficial API).
@@ -211,10 +207,11 @@ def search_anime(query: str, search_type: str) -> str:
                      this should be the name to search for. For 'anime_recommendations',
                      this should be the anime ID. For 'top_anime', this parameter is ignored.
         search_type (str): The type of search to perform. Must be one of:
+                          - 'anime_recommendations': Get anime recommendations (query = anime name)
                           - 'top_anime': Get top-ranked anime (query ignored)
                           - 'get_anime': Search for anime by name, use this to find any information about a particular anime
                           - 'search_character': Search for characters by name
-                          - 'anime_recommendations': Get anime recommendations (query = anime ID)
+
 
     Returns:
         str: JSON response from the Jikan API as a string, containing anime/character
@@ -222,7 +219,7 @@ def search_anime(query: str, search_type: str) -> str:
 
     Example:
         >>> search_anime("naruto", "search_character")
-        >>> search_anime("1", "anime_recommendations")
+        >>> search_anime("naruto", "anime_recommendations")
         >>> search_anime("", "top_anime")
         >>> search_anime("bleach", "get_anime")
     """
@@ -250,7 +247,7 @@ def search_anime(query: str, search_type: str) -> str:
     # Get recommendations (special case)
     if search_type == "anime_recommendations":
         # Find anime ID
-        url = urls["get_anime_id"].format(query)
+        url = urls["get_anime"].format(query)
         anime = requests.get(url).json()["data"][0]
         anime_id = anime["mal_id"]
 
@@ -274,7 +271,11 @@ def search_anime(query: str, search_type: str) -> str:
     json_resp = []
     for anime in resp:
         json_resp.append({key: anime.get(key) for key in needed_info})
-    return str(json_resp)
+    if search_type in ("get_anime", "search_character"):
+        return str(json_resp[0])
+    else:
+        return str(json_resp[:5])
+
 
 
 # can you browse this page and tell me what in there https://en.wikipedia.org/wiki/Albert_Bandura
