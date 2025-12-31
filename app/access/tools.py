@@ -73,7 +73,7 @@ def terminal_access(command: str):  # Changed from cmd: list to command: str
         - "python --version" - Check Python version
         - "pwd" - Print working directory
     """
-    print("In tool, this is the command:", command)
+    print("terminal_access tool, command:", command)
 
     # Split the command string into a list for subprocess
 
