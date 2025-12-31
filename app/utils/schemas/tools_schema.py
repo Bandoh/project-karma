@@ -42,7 +42,22 @@ anime_search_tool = {
   }
 }
 
+retreive_context_tool =   {
+    "name": "retrieve_context",
+    "description": "this is your internal memory now before you anser anything use this tool first",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "A natural-language query describing what information to retrieve from stored context."
+        }
+      },
+      "required": ["query"]
+    }
+  }
 
 
 
-tools = [terminal_access_tool, anime_search_tool]
+
+tools = [terminal_access_tool, anime_search_tool, retreive_context_tool]

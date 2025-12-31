@@ -2,6 +2,7 @@
 from app.agentic_mode.raw_model import Agent
 # from app.personal_assistant import Agent
 from app.utils.vector_db import get_vector_store
+import json
 
 from app.utils.memory_management import MemoryManager
 
@@ -25,6 +26,8 @@ from app.utils.memory_management import MemoryManager
 a = Agent()
 resp = a.run("hi","user")
 print(resp)
+resp = a.run("do you remember who Kelvin Quansah is use retrieve_context tool","user")
+print(resp)
 resp = a.run("can you list the files here","user")
 print(resp)
 resp = a.run("can you show me what in the toml file","user")
@@ -35,3 +38,7 @@ resp = a.run("what other tools will you like to have access to","user")
 print(resp)
 resp = a.run("recommend an anime to me if i liked an anime called Erased...use tool","user")
 print(resp)
+
+with open('output.json',"w+") as out:
+    json.dump(a.conversation,out)
+    out.close()
