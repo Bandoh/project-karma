@@ -32,7 +32,7 @@ class Agent:
         return local_data
     
     def run(self,query,role):
-        self.conversation.append({"role":role,"content":query})
+        self.conversation.append({"role":role,"content":query+". remember to always use escape sequences"})
         resp = self.llm.create_chat_completion(self.conversation)
         output = resp['choices'][0]['message']
         self.conversation.append(output)
@@ -42,7 +42,9 @@ class Agent:
                 tool_result = self.__handle_tool_selection(json_parsed_output['tool'])
                 self.run("if user's request has been fullfilled set tool_call to false and remove tool key in json else set it to true if additional tool call is required and replace the content with resilt from the tool. This is the result: {}".format(tool_result),"tool")
         json_parsed_output = json.loads(self.conversation[-1]['content'])
-        return json_parsed_output['content']
+        content = str(json_parsed_output["content"])
+        content = content.encode().decode("unicode_escape")
+        return content
     
     def __handle_json(self,data:str):
         try:
