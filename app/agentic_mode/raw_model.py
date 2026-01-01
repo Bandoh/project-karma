@@ -50,38 +50,43 @@ class Agent:
 
     def run(self, query, role):
         self.conversation.append({"role": role, "content": query})
-        resp = self.llm.create_chat_completion(
-            self.conversation, response_format=response_schema
-        )
-        output = resp["choices"][0]["message"]
-        logger.info(f"This is output type: {type(output)}")
-        logger.info(f"This is from output: {output}")
-        json_parsed_output = self.__safe_json_parse(output["content"])
-        if "tool_call" in json_parsed_output:
-            if (
-                json_parsed_output["tool_call"] == "true"
-                or json_parsed_output["tool_call"] == True
-            ):
+
+        # Use iteration instead of recursion
+        while True:
+            resp = self.llm.create_chat_completion(
+                self.conversation, response_format=response_schema
+            )
+            output = resp["choices"][0]["message"]
+            json_parsed_output = self.__safe_json_parse(output["content"])
+
+            # Check if tool call is needed
+            needs_tool_call = json_parsed_output.get("tool_call") in ("true", True)
+
+            if needs_tool_call:
+                # Remove content, keep reasoning
                 del json_parsed_output["content"]
-                # logger.info(f"REASONING STEP: {json_parsed_output}")
                 self.conversation.append(
                     {"role": "assistant", "content": json_parsed_output}
                 )
+
+                # Execute tool
                 tool_result = self.__handle_tool_selection(json_parsed_output["tool"])
-                # logger.info(f"TOOL STEP: {tool_result}")
-                self.run(
-                    "use this information to answer the question: {}. Set tool_call to False if request is fullfilled else set to True with respective args".format(
-                        tool_result
-                    ),
-                    "user",
+
+                # Add tool result to conversation
+                self.conversation.append(
+                    {
+                        "role": "user",
+                        "content": f"Strictly use this information to answer the question: {tool_result}. Set tool_call to False if request is fulfilled else set to True with respective args",
+                    }
                 )
+                # Loop continues for next LLM call
             else:
+                # Final response
                 del json_parsed_output["reasoning"]
                 self.conversation.append(
                     {"role": "assistant", "content": json_parsed_output}
                 )
-        json_parsed_output = self.conversation[-1]["content"]
-        return json_parsed_output["content"]
+                return json_parsed_output["content"]
 
     def __safe_json_parse(self, raw_content):
         """
