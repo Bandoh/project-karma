@@ -1,38 +1,46 @@
 response_schema = {
-    "content": " if tool is needed tell me the steps If no tool is needed put response here",
-    "tool_call": "true or false depending on where you need a tool to fulfil request",
-    "tool (this shows only if tool_call is true)": {
-        "tool_name": "specify the specific tool_name i have provided you with",
-        "args": """arguements needed for the tool it should be a map eg. {"command":"ls -la"}""",
-    },
-}
-response_schema = {
     "type": "json_object",
     "schema": {
         "type": "object",
         "properties": {
             "content": {
                 "type": "string",
-                "description": "Response text if no tool is needed",
+                "description": "only visible if tool_call is False. so when no tool is needed put response here",
+            },
+            "reasoning": {
+                "type": "string",
+                "description": "Step-by-step execution plan. Strictly follow this format: 1. The user wants[fill in with users request] 2. How you are going to acheive it. NO conversational text allowed.",
             },
             "tool_call": {
                 "type": "boolean",
-                "description": "True if a tool is required, false otherwise",
+                "description": "true or false depending on where you need a tool to fulfil request",
             },
             "tool": {
                 "type": "object",
                 "properties": {
-                    "tool_name": {"type": "string"},
+                    "tool_name": {
+                        "type": "string",
+                        "description": "specify the specific tool_name I have provided you with",
+                    },
                     "args": {
                         "type": "object",
+                        "description": 'arguments needed for the tool it should be a map eg. {"command":"ls -la"}',
                         "additionalProperties": True,
                     },
                 },
                 "required": ["tool_name", "args"],
             },
         },
-        "required": ["content", "tool_call"],
-        "if": {"properties": {"tool_call": {"const": True}}},
-        "then": {"required": ["tool"]},
+        "required": ["tool_call", "reasoning", "content"],
+        "allOf": [
+            {
+                "if": {"properties": {"tool_call": {"const": True}}},
+                "then": {"required": ["tool", "reasoning"]},
+            },
+            {
+                "if": {"properties": {"tool_call": {"const": False}}},
+                "then": {"required": ["content"]},
+            },
+        ],
     },
 }

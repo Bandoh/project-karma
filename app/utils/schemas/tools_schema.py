@@ -46,7 +46,7 @@ retrieve_context_tool = {
     "name": "retrieve_context",
     "description": """Retrieves relevant information from your memory/knowledge base. 
 
-CRITICAL: You MUST call this tool BEFORE answering any user question to check if relevant context exists.
+CRITICAL: You MUST call this tool BEFORE (unless there is another tool that can help) answering any user question to check if relevant context exists.
 
 This tool searches through previously stored conversations, documents, and context to find information relevant to the current query. Always retrieve context first, then use that information to provide accurate, personalized responses.
 

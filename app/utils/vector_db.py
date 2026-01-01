@@ -11,10 +11,11 @@ def get_vector_store():
     """Get or initialize the vector store (singleton pattern)"""
     global _vector_store
     if _vector_store is None:
-        print("🔧 Creating NEW vector store...")  # Only prints once
+        # print("🔧 Creating NEW vector store...")  # Only prints once
         _vector_store = _initialize_vector_store()
     else:
-        print("✅ Reusing EXISTING vector store")  # Prints on subsequent calls
+        print
+        # print("✅ Reusing EXISTING vector store")  # Prints on subsequent calls
     return _vector_store
 
 
