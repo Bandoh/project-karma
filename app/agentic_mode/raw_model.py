@@ -20,17 +20,12 @@ class Agent:
         self.conversation.append(
             {
                 "role": "system",
-                "content": (
-                    self.config.system_message.replace(
-                        "[SCHEMA HERE]", str(response_schema).replace("'", '"')
-                    )
-                ).replace("[TOOLS HERE]", str(tools)),
+                "content": (self.config.system_message),
             }
         )
         self.query = ""
         self.llm = Llama(
             model_path=self.config.model_name,
-            temperature=self.config.temperature,
             n_ctx=20000,
             n_gpu_layers=-1,
             n_batch=300,  # Should be between 1 and n_ctx, consider the amount of VRAM in your GPU.
@@ -39,6 +34,7 @@ class Agent:
             repeat_penalty=1.1,
             top_p=0.95,
             verbose=False,
+            chat_format="chatml-function-calling",
         )
         pass
 
@@ -48,70 +44,52 @@ class Agent:
             local_data = Config(**data)
         return local_data
 
-    def run(self, query, role):
+    def run(self, query, role="user"):
         self.conversation.append({"role": role, "content": query})
 
-        # Use iteration instead of recursion
-        while True:
-            resp = self.llm.create_chat_completion(
-                self.conversation, response_format=response_schema
+        resp = self.llm.create_chat_completion(
+            self.conversation,
+            tools=tools,
+            tool_choice="auto",
+        )
+
+        msg = resp["choices"][0]["message"]
+
+        if msg.get("tool_calls"):
+            tool_call = msg["tool_calls"][0]
+            tool_info = tool_call["function"]
+
+            tool_result = self.__handle_tool_selection(tool_info)
+
+            # self.conversation.append(
+            #     {
+            #         "role": "assistant",
+            #         "tool_call_id": tool_call["id"],
+            #         "content": json.dumps(tool_result),
+            #     }
+            # )
+            self.conversation.append(
+                {
+                    "role": "user",
+                    "content": f"use the answer from here:{tool_result}  to answer my question question",
+                }
             )
-            output = resp["choices"][0]["message"]
-            json_parsed_output = self.__safe_json_parse(output["content"])
-
-            # Check if tool call is needed
-            needs_tool_call = json_parsed_output.get("tool_call") in ("true", True)
-
-            if needs_tool_call:
-                # Remove content, keep reasoning
-                del json_parsed_output["content"]
-                self.conversation.append(
-                    {"role": "assistant", "content": json_parsed_output}
-                )
-
-                # Execute tool
-                tool_result = self.__handle_tool_selection(json_parsed_output["tool"])
-
-                # Add tool result to conversation
-                self.conversation.append(
-                    {
-                        "role": "user",
-                        "content": f"Strictly use this information to answer the question: {tool_result}. Set tool_call to False if request is fulfilled else set to True with respective args",
-                    }
-                )
-                # Loop continues for next LLM call
-            else:
-                # Final response
-                del json_parsed_output["reasoning"]
-                self.conversation.append(
-                    {"role": "assistant", "content": json_parsed_output}
-                )
-                return json_parsed_output["content"]
-
-    def __safe_json_parse(self, raw_content):
-        """
-        Attempt to parse LLM output as JSON5.
-        If parsing fails, wrap content in a dict to avoid type errors.
-        """
-        try:
-            # Escape problematic newlines
-            escaped_content = raw_content.replace("\n", "\\n").replace("\r", "")
-            parsed = json5.loads(escaped_content)
-            # If the model outputs plain string, wrap it
-            if isinstance(parsed, str):
-                return {"content": parsed}
-            return parsed
-        except Exception as e:
-            logger.error(f"Failed to parse JSON: {e}\nContent was: {raw_content}")
-            # Fallback: always return a dict
-            return {"content": raw_content}
+            final_resp = self.llm.create_chat_completion(self.conversation)
+            final_msg = final_resp["choices"][0]["message"]
+            self.conversation.append(final_msg)
+            return final_msg["content"]
+        final_resp = self.llm.create_chat_completion(self.conversation, temperature=0.7)
+        self.conversation.append(final_resp["choices"][0]["message"])
+        return final_resp["choices"][0]["message"]["content"]
 
     def __handle_tool_selection(self, tool_info):
+        logger.info(tool_info)
+        function_args = json.loads(tool_info["arguments"])
         call = ""
-        if tool_info["tool_name"] == "terminal_access":
-            call = terminal_access(**tool_info["args"])
-        if tool_info["tool_name"] == "search_anime":
-            call = search_anime(**tool_info["args"])
-        if tool_info["tool_name"] == "retrieve_context":
-            call = retrieve_context(**tool_info["args"])
+        if tool_info["name"] == "terminal_access":
+            call = terminal_access(**function_args)
+        if tool_info["name"] == "search_anime":
+            call = search_anime(**function_args)
+        if tool_info["name"] == "retrieve_context":
+            call = retrieve_context(**function_args)
         return call
