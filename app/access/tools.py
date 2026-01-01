@@ -42,11 +42,10 @@ def retrieve_context(query: str):
     all_docs = ""
     retrieved_docs_with_scores = vector_store.similarity_search_with_score(query, k=5)
     for doc, score in retrieved_docs_with_scores:
-        # print(score) 
-        if score > 0.25: 
-            all_docs+= " {}".format(doc.page_content)
+        # print(score)
+        if score > 0.25:
+            all_docs += " {}".format(doc.page_content)
     return all_docs
-
 
 
 def terminal_access(command: str):  # Changed from cmd: list to command: str
@@ -73,7 +72,6 @@ def terminal_access(command: str):  # Changed from cmd: list to command: str
         - "python --version" - Check Python version
         - "pwd" - Print working directory
     """
-    print("In tool, this is the command:", command)
 
     # Split the command string into a list for subprocess
 
@@ -82,7 +80,6 @@ def terminal_access(command: str):  # Changed from cmd: list to command: str
         return result.stderr
     else:
         return result.stdout
-
 
 
 def update_memory(information: str) -> str:
@@ -143,7 +140,6 @@ def browser(url: str) -> str:
 
     Example:
         >>> summary = browser("https://example.com/article")
-        >>> print(summary)
         'This is the first key sentence. This is another important point...'
 
     Raises:
@@ -195,7 +191,6 @@ def browser(url: str) -> str:
         driver.quit()
 
     return summarized.strip()
-
 
 
 def search_anime(query: str, search_type: str) -> str:
@@ -275,7 +270,6 @@ def search_anime(query: str, search_type: str) -> str:
         return str(json_resp[0])
     else:
         return str(json_resp[:5])
-
 
 
 # can you browse this page and tell me what in there https://en.wikipedia.org/wiki/Albert_Bandura
