@@ -14,3 +14,4 @@ output.json
 anime.json
 test.py
 app/data/tools.txt
+.config_backup.json
