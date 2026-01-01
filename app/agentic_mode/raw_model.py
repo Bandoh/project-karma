@@ -51,6 +51,9 @@ class Agent:
             self.conversation,
             tools=tools,
             tool_choice="auto",
+            response_format={
+                "type": "json_object",
+            },
         )
 
         msg = resp["choices"][0]["message"]
@@ -60,14 +63,6 @@ class Agent:
             tool_info = tool_call["function"]
 
             tool_result = self.__handle_tool_selection(tool_info)
-
-            # self.conversation.append(
-            #     {
-            #         "role": "assistant",
-            #         "tool_call_id": tool_call["id"],
-            #         "content": json.dumps(tool_result),
-            #     }
-            # )
             self.conversation.append(
                 {
                     "role": "user",
